@@ -70,7 +70,9 @@ module.exports = function(RED) {
 			} else if (req == "toggle") {
 			    device.toggle();
 			} else if (typeof req == "boolean") {
-			    device.set({ set: req }).catch(reason => {
+			    device.set({ set: req }).then(() => {
+				node.status({ fill: "green", shape: "dot", text: 'set success at:' + getHumanTimeStamp() });
+			    }).catch(reason => {
 				node.status({ fill: "red", shape: "dot", text: 'set state failed:' + reason });
 			    });
 			} else if ("dps" in req) {
@@ -91,6 +93,7 @@ module.exports = function(RED) {
 			node.error(`Error while processing input for device ${node.Name}: ${error}`);
 		    }
 		}
+
 
 		connectToDevice(10,'Deploy connection request for device ' + this.Name);
 

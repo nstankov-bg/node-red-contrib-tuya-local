@@ -21,49 +21,75 @@ module.exports = function(RED) {
 			ip: this.Ip,
 			version: this.version});
 
-		function connectToDevice(timeout,req) {
-			device.find({'options': {'timeout':timeout}}).then( () => {
-				node.status({fill:"yellow",shape:"dot",text:"connecting"});
+		function connectToDevice(timeout, req) {
+		    try {
+			device.find({ 'options': { 'timeout': timeout } })
+			    .then(() => {
+				node.status({ fill: "yellow", shape: "dot", text: "connecting" });
 				node.log(req);
-				device.connect().then( () => {
-				}, (reason) => { 
-					node.status({fill:"red",shape:"ring",text:"failed: " + reason});
-				});
-			});
+				device.connect()
+				    .then(() => {
+					node.status({ fill: "green", shape: "dot", text: "connected" });
+				    })
+				    .catch(reason => {
+					node.status({ fill: "red", shape: "ring", text: "failed: " + reason });
+					node.error(`Failed to connect to device ${node.Name}: ${reason}`);
+				    });
+			    })
+			    .catch(error => {
+				node.status({ fill: "red", shape: "ring", text: "device not found" });
+				node.error(`Device not found for ${node.Name}: ${error}`);
+			    });
+		    } catch (error) {
+			node.status({ fill: "red", shape: "ring", text: `Error: ${error.message}` });
+			node.error(`Error while trying to connect to device ${node.Name}: ${error}`);
+		    }
 		}
 
+
 		function disconnectDevice(deleted) {
+		    try {
 			set_timeout = deleted ? false : true;
 			device.disconnect();
+		    } catch (error) {
+			node.status({ fill: "red", shape: "ring", text: `Error: ${error.message}` });
+			node.error(`Error while disconnecting device ${node.Name}: ${error}`);
+		    }
 		}
 // 
 		function setDevice(req) {
-			if ( req == "request" ) {
-				device.get({"schema":true});
-			} else if ( req == "connect" ) {
-				// node.log('Connection requested by input');
-				connectToDevice(10,'Connection requested by input for device: ' + this.Name );
-			} else if ( req == "disconnect" ) {
-				node.log("Disconnection requested by input for device: " + this.Name)
-				device.disconnect();
+		    try {
+			if (req == "request") {
+			    device.get({ "schema": true });
+			} else if (req == "connect") {
+			    // node.log('Connection requested by input');
+			    connectToDevice(10, 'Connection requested by input for device: ' + this.Name);
+			} else if (req == "disconnect") {
+			    node.log("Disconnection requested by input for device: " + this.Name)
+			    device.disconnect();
 			} else if (req == "toggle") {
-				device.toggle();
-			} else if ( typeof req == "boolean" ) {
-				device.set({set: req}).then( () => {
-					node.status({fill:"green",shape:"dot",text: 'set success at:' + getHumanTimeStamp()});
-				}, (reason) => {
-					node.status({fill:"red",shape:"dot",text: 'set state failed:' + reason});
-				});
-			} else if ( "dps" in req ) {
-				console.log(req)
-				device.set(req);
-			} else if ( "multiple" in req) {
-				device.set({
-					multiple:true,
-					data: req.data
-				});
+			    device.toggle();
+			} else if (typeof req == "boolean") {
+			    device.set({ set: req }).then(() => {
+				node.status({ fill: "green", shape: "dot", text: 'set success at:' + getHumanTimeStamp() });
+			    }, (reason) => {
+				node.status({ fill: "red", shape: "dot", text: 'set state failed:' + reason });
+			    });
+			} else if ("dps" in req) {
+			    console.log(req)
+			    device.set(req);
+			} else if ("multiple" in req) {
+			    device.set({
+				multiple: true,
+				data: req.data
+			    });
 			}
+		    } catch (error) {
+			node.status({ fill: "red", shape: "dot", text: `Error: ${error.message}` });
+			node.error(`Error while processing input for device ${node.Name}: ${error}`);
+		    }
 		}
+
 
 
 		connectToDevice(10,'Deploy connection request for device ' + this.Name);

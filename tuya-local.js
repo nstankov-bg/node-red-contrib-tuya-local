@@ -89,6 +89,10 @@ module.exports = function (RED) {
       }
     }
 
+    async function wait(ms) {
+      return new Promise((resolve) => setTimeout(resolve, ms));
+    }
+
     async function setDevice(req) {
       try {
         node.commandQueue.push(req);
@@ -128,6 +132,9 @@ module.exports = function (RED) {
               data: currentReq.data,
             });
           }
+
+          // Add a 2-second timeout before executing the next command
+          await wait(2000);
         }
       } catch (error) {
         node.status({

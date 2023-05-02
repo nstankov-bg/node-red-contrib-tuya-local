@@ -10,6 +10,7 @@ module.exports = function (RED) {
   function TuyaNode(config) {
     RED.nodes.createNode(this, config);
     var node = this;
+    var set_timeout = true;
     this.Name = config.devName;
     this.Id = config.devId;
     this.Key = config.devKey;
@@ -91,6 +92,9 @@ module.exports = function (RED) {
     async function setDevice(req) {
       try {
         node.commandQueue.push(req);
+        node.warn(
+          `Current command queue: ${JSON.stringify(node.commandQueue)}`
+        );
 
         while (node.commandQueue.length > 0) {
           const currentReq = node.commandQueue.shift();
@@ -150,12 +154,9 @@ module.exports = function (RED) {
       msg = { data: dev_info };
       node.send(msg);
       if (set_timeout) {
-        timeout = setTimeout(
-          connectToDevice,
-          5000,
-          10,
-          "set timeout for re-connect"
-        );
+        timeout = setTimeout(() => {
+          connectToDevice(5000, "set timeout for re-connect");
+        }, 5000);
       }
     });
 

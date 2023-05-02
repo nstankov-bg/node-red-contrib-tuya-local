@@ -184,9 +184,13 @@ module.exports = function (RED) {
       }
     });
 
+    const MAX_RETRIES = 10;
+    let connectionRetries = 0;
+
     device.on("error", (error) => {
       this.status({ fill: "red", shape: "ring", text: "error: " + error });
       node.warn(error + " device: " + this.Name);
+
       if (error.toString().includes("Error from socket")) {
         try {
           node.log(
@@ -199,6 +203,32 @@ module.exports = function (RED) {
             "error: No timeout defined, device " +
               this.Name +
               " is probably not powered"
+          );
+        }
+      }
+
+      if (error.toString().includes("ECONNREFUSED")) {
+        node.status({
+          fill: "red",
+          shape: "ring",
+          text: `Connection refused: ${error}`,
+        });
+        node.error(`Connection refused for ${node.Name}: ${error}`);
+
+        if (connectionRetries < MAX_RETRIES) {
+          connectionRetries++;
+          node.warn(
+            `Retrying connection for ${node.Name} (${connectionRetries}/${MAX_RETRIES})`
+          );
+          setTimeout(() => {
+            connectToDevice(
+              5,
+              `Retry connection attempt for ${node.Name} (${connectionRetries}/${MAX_RETRIES})`
+            );
+          }, 5000 * connectionRetries); // Increasing delay before each retry
+        } else {
+          node.error(
+            `Max retries reached for ${node.Name}. Connection attempts stopped.`
           );
         }
       }

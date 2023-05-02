@@ -17,6 +17,7 @@ module.exports = function (RED) {
     this.version = config.protocolVer;
     this.renameSchema = config.renameSchema;
     this.filterCB = config.filterCB;
+    this.timerOFF = config.timerOFF;
     const dev_info = { name: this.Name, ip: this.Ip, id: this.Id };
     const device = new TuyaDev({
       id: this.Id,
@@ -45,10 +46,6 @@ module.exports = function (RED) {
                 });
                 node.error(
                   `Failed to connect to device ${node.Name}: ${reason}`
-                );
-                setTimeout(
-                  () => connectToDevice(timeout, "Retrying connection"),
-                  RETRY_DELAY
                 );
               });
           })
@@ -216,6 +213,14 @@ module.exports = function (RED) {
             ? keyRename(data.dps, JSON.parse(this.renameSchema))
             : data.dps;
         }
+
+        // Check if timerOFF is not 0 and turn off lightbulbs after the specified time
+        if (this.timerOFF !== 0) {
+          setTimeout(() => {
+            device.set({ dps: 20, set: false }); // Assuming dps 20 is the lightbulb control and 'set' is the property to turn it on/off
+          }, this.timerOFF * 1000); // Convert timerOFF to milliseconds
+        }
+
         msg = { data: dev_info, commandByte: commandByte, payload: data };
         if (this.filterCB !== "") {
           node.send(filterCommandByte(msg, this.filterCB));

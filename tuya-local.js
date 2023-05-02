@@ -25,6 +25,8 @@ module.exports = function (RED) {
       ip: this.Ip,
       version: this.version,
     });
+    const deviceCommandQueues = {};
+    deviceCommandQueues[node.Id] = [];
 
     function connectToDevice(timeout, req) {
       try {
@@ -86,13 +88,19 @@ module.exports = function (RED) {
         node.error(`Error while disconnecting device ${node.Name}: ${error}`);
       }
     }
-    //
+
+    let setCommandInProgress = false;
     function setDevice(req) {
       try {
+        if (setCommandInProgress) {
+          deviceCommandQueues[node.Id].push(req);
+          return;
+        }
+        setCommandInProgress = true;
+
         if (req == "request") {
           device.get({ schema: true });
         } else if (req == "connect") {
-          // node.log('Connection requested by input');
           connectToDevice(
             5,
             "Connection requested by input for device: " + this.Name
@@ -120,7 +128,6 @@ module.exports = function (RED) {
               });
             });
         } else if ("dps" in req) {
-          console.log(req);
           device.set(req).catch((error) => {
             node.error(`Error setting device state for ${node.Name}: ${error}`);
           });
@@ -145,6 +152,11 @@ module.exports = function (RED) {
         node.error(
           `Error while processing input for device ${node.Name}: ${error}`
         );
+      } finally {
+        setCommandInProgress = false;
+        if (deviceCommandQueues[node.Id].length > 0) {
+          setDevice(deviceCommandQueues[node.Id].shift());
+        }
       }
     }
 
@@ -217,7 +229,13 @@ module.exports = function (RED) {
         // Check if timerOFF is not 0 and turn off lightbulbs after the specified time
         if (this.timerOFF !== 0) {
           setTimeout(() => {
-            device.set({ dps: 20, set: false }); // Assuming dps 20 is the lightbulb control and 'set' is the property to turn it on/off
+            node.status({
+              fill: "green",
+              shape: "dot",
+              text: "Timer scheduled for " + this.timerOFF + " seconds",
+            });
+            // Use setDevice to turn off the lightbulb
+            setDevice({ dps: 20, set: false }); // Assuming dps 20 is the lightbulb control and 'set' is the property to turn it on/off
           }, this.timerOFF * 1000); // Convert timerOFF to milliseconds
         }
 

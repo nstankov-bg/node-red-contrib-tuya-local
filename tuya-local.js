@@ -138,6 +138,8 @@ module.exports = function (RED) {
         node.error(
           `Error while processing input for device ${node.Name}: ${error}`
         );
+        //Reconnect to device and wait for 3 seconds before retrying
+        connectToDevice(3000, "Retry connection after error");
       }
     }
 

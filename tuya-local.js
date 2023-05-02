@@ -25,8 +25,7 @@ module.exports = function (RED) {
       ip: this.Ip,
       version: this.version,
     });
-    const deviceCommandQueues = {};
-    deviceCommandQueues[node.Id] = [];
+    this.commandQueue = [];
 
     function connectToDevice(timeout, req) {
       try {
@@ -89,59 +88,42 @@ module.exports = function (RED) {
       }
     }
 
-    let setCommandInProgress = false;
-    function setDevice(req) {
+    async function setDevice(req) {
       try {
-        if (setCommandInProgress) {
-          deviceCommandQueues[node.Id].push(req);
-          return;
-        }
-        setCommandInProgress = true;
+        node.commandQueue.push(req);
 
-        if (req == "request") {
-          device.get({ schema: true });
-        } else if (req == "connect") {
-          connectToDevice(
-            5,
-            "Connection requested by input for device: " + this.Name
-          );
-        } else if (req == "disconnect") {
-          node.log("Disconnection requested by input for device: " + this.Name);
-          device.disconnect();
-        } else if (req == "toggle") {
-          device.toggle();
-        } else if (typeof req == "boolean") {
-          device
-            .set({ set: req })
-            .then(() => {
-              node.status({
-                fill: "green",
-                shape: "dot",
-                text: "set success at:" + getHumanTimeStamp(),
-              });
-            })
-            .catch((reason) => {
-              node.status({
-                fill: "red",
-                shape: "dot",
-                text: "set state failed:" + reason,
-              });
+        while (node.commandQueue.length > 0) {
+          const currentReq = node.commandQueue.shift();
+
+          if (currentReq == "request") {
+            await device.get({ schema: true });
+          } else if (currentReq == "connect") {
+            connectToDevice(
+              5,
+              "Connection requested by input for device: " + node.Name
+            );
+          } else if (currentReq == "disconnect") {
+            node.log(
+              "Disconnection requested by input for device: " + node.Name
+            );
+            device.disconnect();
+          } else if (currentReq == "toggle") {
+            await device.toggle();
+          } else if (typeof currentReq == "boolean") {
+            await device.set({ set: currentReq });
+            node.status({
+              fill: "green",
+              shape: "dot",
+              text: "set success at:" + getHumanTimeStamp(),
             });
-        } else if ("dps" in req) {
-          device.set(req).catch((error) => {
-            node.error(`Error setting device state for ${node.Name}: ${error}`);
-          });
-        } else if ("multiple" in req) {
-          device
-            .set({
+          } else if ("dps" in currentReq) {
+            await device.set(currentReq);
+          } else if ("multiple" in currentReq) {
+            await device.set({
               multiple: true,
-              data: req.data,
-            })
-            .catch((error) => {
-              node.error(
-                `Error setting device state for ${node.Name}: ${error}`
-              );
+              data: currentReq.data,
             });
+          }
         }
       } catch (error) {
         node.status({
@@ -152,11 +134,6 @@ module.exports = function (RED) {
         node.error(
           `Error while processing input for device ${node.Name}: ${error}`
         );
-      } finally {
-        setCommandInProgress = false;
-        if (deviceCommandQueues[node.Id].length > 0) {
-          setDevice(deviceCommandQueues[node.Id].shift());
-        }
       }
     }
 

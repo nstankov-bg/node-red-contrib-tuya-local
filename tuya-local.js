@@ -236,15 +236,15 @@ module.exports = function (RED) {
         }
       }
       if (
-        errorString.includes("ETIMEDOUT") ||
-        errorString.includes("ENETUNREACH") ||
-        errorString.includes("EHOSTUNREACH") ||
-        errorString.includes("ECONNREFUSED") ||
-        errorString.includes("ECONNRESET") ||
-        errorString.includes("EPIPE") ||
-        errorString.includes("ENOTCONN") ||
-        errorString.includes("EADDRINUSE") ||
-        errorString.includes("EADDRNOTAVAIL")
+        error.toString().includes("ETIMEDOUT") ||
+        error.toString().includes("ENETUNREACH") ||
+        error.toString().includes("EHOSTUNREACH") ||
+        error.toString().includes("ECONNREFUSED") ||
+        error.toString().includes("ECONNRESET") ||
+        error.toString().includes("EPIPE") ||
+        error.toString().includes("ENOTCONN") ||
+        error.toString().includes("EADDRINUSE") ||
+        error.toString().includes("EADDRNOTAVAIL")
       ) {
         node.status({
           fill: "red",

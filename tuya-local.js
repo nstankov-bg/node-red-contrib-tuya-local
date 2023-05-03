@@ -6,6 +6,10 @@ const {
   filterCommandByte,
 } = require("./lib/utils");
 
+process.on("uncaughtException", (err) => {
+  console.error("Uncaught Exception:", err);
+});
+
 module.exports = function (RED) {
   function TuyaNode(config) {
     RED.nodes.createNode(this, config);

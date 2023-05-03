@@ -206,43 +206,44 @@ module.exports = function (RED) {
             );
           }
         }
+
+        if (
+          error.toString().includes("ETIMEDOUT") ||
+          error.toString().includes("ENETUNREACH") ||
+          error.toString().includes("EHOSTUNREACH") ||
+          error.toString().includes("ECONNREFUSED") ||
+          error.toString().includes("ECONNRESET") ||
+          error.toString().includes("EPIPE") ||
+          error.toString().includes("ENOTCONN") ||
+          error.toString().includes("EADDRINUSE") ||
+          error.toString().includes("EADDRNOTAVAIL")
+        ) {
+          node.status({
+            fill: "red",
+            shape: "ring",
+            text: `Host unreachable: ${error}`,
+          });
+          node.error(`Host unreachable for ${node.Name}: ${error}`);
+
+          if (connectionRetries < MAX_RETRIES) {
+            connectionRetries++;
+            node.warn(
+              `Retrying connection for ${node.Name} (${connectionRetries}/${MAX_RETRIES})`
+            );
+            setTimeout(() => {
+              connectToDevice(
+                5,
+                `Retry connection attempt for ${node.Name} (${connectionRetries}/${MAX_RETRIES})`
+              );
+            }, 5000 * connectionRetries); // Increasing delay before each retry
+          } else {
+            node.error(
+              `Max retries reached for ${node.Name}. Connection attempts stopped.`
+            );
+          }
+        }
       } catch (err) {
         node.error(`Error handling 'error' event for ${node.Name}: ${err}`);
-      }
-      if (
-        error.toString().includes("ETIMEDOUT") ||
-        error.toString().includes("ENETUNREACH") ||
-        error.toString().includes("EHOSTUNREACH") ||
-        error.toString().includes("ECONNREFUSED") ||
-        error.toString().includes("ECONNRESET") ||
-        error.toString().includes("EPIPE") ||
-        error.toString().includes("ENOTCONN") ||
-        error.toString().includes("EADDRINUSE") ||
-        error.toString().includes("EADDRNOTAVAIL")
-      ) {
-        node.status({
-          fill: "red",
-          shape: "ring",
-          text: `Host unreachable: ${error}`,
-        });
-        node.error(`Host unreachable for ${node.Name}: ${error}`);
-
-        if (connectionRetries < MAX_RETRIES) {
-          connectionRetries++;
-          node.warn(
-            `Retrying connection for ${node.Name} (${connectionRetries}/${MAX_RETRIES})`
-          );
-          setTimeout(() => {
-            connectToDevice(
-              5,
-              `Retry connection attempt for ${node.Name} (${connectionRetries}/${MAX_RETRIES})`
-            );
-          }, 5000 * connectionRetries); // Increasing delay before each retry
-        } else {
-          node.error(
-            `Max retries reached for ${node.Name}. Connection attempts stopped.`
-          );
-        }
       }
     });
 

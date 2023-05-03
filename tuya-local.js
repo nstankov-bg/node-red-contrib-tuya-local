@@ -175,7 +175,6 @@ module.exports = function (RED) {
         shape: "dot",
         text: this.Ip + " at " + getHumanTimeStamp(),
       });
-
       try {
         clearTimeout(timeout);
       } catch (e) {
@@ -183,18 +182,6 @@ module.exports = function (RED) {
           "No timeout defined for " + this.Name + ", probably NodeRED starting"
         );
       }
-
-      // Add an error event listener to the socket
-      device.socket.on("error", (error) => {
-        if (error.code === "ECONNREFUSED") {
-          node.status({
-            fill: "red",
-            shape: "ring",
-            text: `Connection refused: ${error.address}:${error.port}`,
-          });
-          node.error(`Connection refused for ${node.Name}: ${error}`);
-        }
-      });
     });
 
     const MAX_RETRIES = 10;

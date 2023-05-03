@@ -170,18 +170,24 @@ module.exports = function (RED) {
       connectToDevice(5, "Deploy connection request for device " + this.Name);
 
       device.on("disconnected", () => {
-        this.status({
-          fill: "red",
-          shape: "ring",
-          text: "disconnected from device",
-        });
-        dev_info.available = false;
-        msg = { data: dev_info };
-        node.send(msg);
-        if (set_timeout) {
-          timeout = setTimeout(() => {
-            connectToDevice(5000, "set timeout for re-connect");
-          }, 5000);
+        try {
+          this.status({
+            fill: "red",
+            shape: "ring",
+            text: "disconnected from device",
+          });
+          dev_info.available = false;
+          msg = { data: dev_info };
+          node.send(msg);
+          if (set_timeout) {
+            timeout = setTimeout(() => {
+              connectToDevice(5000, "set timeout for re-connect");
+            }, 5000);
+          }
+        } catch (err) {
+          node.error(
+            `Error handling 'disconnected' event for ${node.Name}: ${err}`
+          );
         }
       });
 
@@ -286,57 +292,78 @@ module.exports = function (RED) {
       });
 
       device.on("data", (data, commandByte) => {
-        if ("commandByte" !== null) {
-          dev_info.available = true;
-          if (this.renameSchema !== undefined || this.renameSchema !== null) {
-            data.dps = checkValidJSON(this.renameSchema)
-              ? keyRename(data.dps, JSON.parse(this.renameSchema))
-              : data.dps;
-          }
+        try {
+          if ("commandByte" !== null) {
+            dev_info.available = true;
+            if (this.renameSchema !== undefined || this.renameSchema !== null) {
+              data.dps = checkValidJSON(this.renameSchema)
+                ? keyRename(data.dps, JSON.parse(this.renameSchema))
+                : data.dps;
+            }
 
-          // Check if timerOFF is not 0 and turn off lightbulbs after the specified time
-          if (this.timerOFF !== 0) {
-            setTimeout(() => {
-              node.status({
-                fill: "green",
-                shape: "dot",
-                text: "Timer scheduled for " + this.timerOFF + " seconds",
-              });
-              // Use setDevice to turn off the lightbulb
-              setDevice({ dps: 20, set: false }); // Assuming dps 20 is the lightbulb control and 'set' is the property to turn it on/off
-            }, this.timerOFF * 1000); // Convert timerOFF to milliseconds
-          }
+            // Check if timerOFF is not 0 and turn off lightbulbs after the specified time
+            if (this.timerOFF !== 0) {
+              setTimeout(() => {
+                node.status({
+                  fill: "green",
+                  shape: "dot",
+                  text: "Timer scheduled for " + this.timerOFF + " seconds",
+                });
+                setDevice({ dps: 20, set: false }); // Assuming dps 20 is the lightbulb control and 'set' is the property to turn it on/off
+              }, this.timerOFF * 1000); // Convert timerOFF to milliseconds
+            }
 
-          msg = { data: dev_info, commandByte: commandByte, payload: data };
-          if (this.filterCB !== "") {
-            node.send(filterCommandByte(msg, this.filterCB));
-          } else {
-            node.send(msg);
+            msg = { data: dev_info, commandByte: commandByte, payload: data };
+            if (this.filterCB !== "") {
+              node.send(filterCommandByte(msg, this.filterCB));
+            } else {
+              node.send(msg);
+            }
           }
+        } catch (err) {
+          node.error(`Error handling 'data' event for ${node.Name}: ${err}`);
         }
       });
 
       node.on("input", function (msg) {
-        setDevice(msg.payload);
+        try {
+          setDevice(msg.payload)
+            .then(() => {
+              // You can handle successful execution here if necessary
+            })
+            .catch((err) => {
+              node.error(
+                `Error handling 'input' event for ${node.Name}: ${err}`
+              );
+            });
+        } catch (err) {
+          node.error(`Error handling 'input' event for ${node.Name}: ${err}`);
+        }
       });
 
       this.on("close", function (removed, done) {
-        if (removed) {
-          // This node has been deleted disconnect device and not set a timeout for reconnection
-          node.log("Node removal, gracefully disconnect device: " + this.Name);
-          device.isConnected()
-            ? disconnectDevice(true)
-            : node.log("Device " + this.Name + "not connected on removal");
-        } else {
-          // this node is being restarted, disconnect the device gracefully or connection will fail. Do not set a timeout
-          node.log(
-            "Node de-deploy, gracefully disconnect device: " + this.Name
-          );
-          device.isConnected()
-            ? disconnectDevice(true)
-            : node.log("Device " + this.Name + "not connected on re-deploy");
+        try {
+          if (removed) {
+            // This node has been deleted disconnect device and not set a timeout for reconnection
+            node.log(
+              "Node removal, gracefully disconnect device: " + this.Name
+            );
+            device.isConnected()
+              ? disconnectDevice(true)
+              : node.log("Device " + this.Name + "not connected on removal");
+          } else {
+            // this node is being restarted, disconnect the device gracefully or connection will fail. Do not set a timeout
+            node.log(
+              "Node de-deploy, gracefully disconnect device: " + this.Name
+            );
+            device.isConnected()
+              ? disconnectDevice(true)
+              : node.log("Device " + this.Name + "not connected on re-deploy");
+          }
+          done();
+        } catch (err) {
+          node.error(`Error handling 'close' event for ${node.Name}: ${err}`);
         }
-        done();
       });
       //
     } catch (error) {

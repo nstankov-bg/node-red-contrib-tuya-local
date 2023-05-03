@@ -209,32 +209,6 @@ module.exports = function (RED) {
       } catch (err) {
         node.error(`Error handling 'error' event for ${node.Name}: ${err}`);
       }
-
-      if (error.toString().includes("ECONNREFUSED")) {
-        node.status({
-          fill: "red",
-          shape: "ring",
-          text: `Connection refused: ${error}`,
-        });
-        node.error(`Connection refused for ${node.Name}: ${error}`);
-
-        if (connectionRetries < MAX_RETRIES) {
-          connectionRetries++;
-          node.warn(
-            `Retrying connection for ${node.Name} (${connectionRetries}/${MAX_RETRIES})`
-          );
-          setTimeout(() => {
-            connectToDevice(
-              5,
-              `Retry connection attempt for ${node.Name} (${connectionRetries}/${MAX_RETRIES})`
-            );
-          }, 5000 * connectionRetries); // Increasing delay before each retry
-        } else {
-          node.error(
-            `Max retries reached for ${node.Name}. Connection attempts stopped.`
-          );
-        }
-      }
       if (
         error.toString().includes("ETIMEDOUT") ||
         error.toString().includes("ENETUNREACH") ||

@@ -10,6 +10,10 @@ process.on("uncaughtException", (err) => {
   console.error("Uncaught Exception:", err);
 });
 
+process.on("unhandledRejection", (reason, p) => {
+  console.error("Unhandled Rejection:", reason);
+});
+
 module.exports = function (RED) {
   function TuyaNode(config) {
     try {

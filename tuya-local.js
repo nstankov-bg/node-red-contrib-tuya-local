@@ -132,7 +132,6 @@ module.exports = function (RED) {
               data: currentReq.data,
             });
           }
-
           // Add a 2-second timeout before executing the next command
           await wait(2000);
         }
@@ -188,23 +187,27 @@ module.exports = function (RED) {
     let connectionRetries = 0;
 
     device.on("error", (error) => {
-      this.status({ fill: "red", shape: "ring", text: "error: " + error });
-      node.warn(error + " device: " + this.Name);
+      try {
+        this.status({ fill: "red", shape: "ring", text: "error: " + error });
+        node.warn(error + " device: " + this.Name);
 
-      if (error.toString().includes("Error from socket")) {
-        try {
-          node.log(
-            "error: Trying to clear a possible timeout timer for device " +
-              this.Name
-          );
-          clearTimeout(timeout);
-        } catch (e) {
-          node.log(
-            "error: No timeout defined, device " +
-              this.Name +
-              " is probably not powered"
-          );
+        if (error.toString().includes("Error from socket")) {
+          try {
+            node.log(
+              "error: Trying to clear a possible timeout timer for device " +
+                this.Name
+            );
+            clearTimeout(timeout);
+          } catch (e) {
+            node.log(
+              "error: No timeout defined, device " +
+                this.Name +
+                " is probably not powered"
+            );
+          }
         }
+      } catch (err) {
+        node.error(`Error handling 'error' event for ${node.Name}: ${err}`);
       }
 
       if (error.toString().includes("ECONNREFUSED")) {
@@ -214,6 +217,41 @@ module.exports = function (RED) {
           text: `Connection refused: ${error}`,
         });
         node.error(`Connection refused for ${node.Name}: ${error}`);
+
+        if (connectionRetries < MAX_RETRIES) {
+          connectionRetries++;
+          node.warn(
+            `Retrying connection for ${node.Name} (${connectionRetries}/${MAX_RETRIES})`
+          );
+          setTimeout(() => {
+            connectToDevice(
+              5,
+              `Retry connection attempt for ${node.Name} (${connectionRetries}/${MAX_RETRIES})`
+            );
+          }, 5000 * connectionRetries); // Increasing delay before each retry
+        } else {
+          node.error(
+            `Max retries reached for ${node.Name}. Connection attempts stopped.`
+          );
+        }
+      }
+      if (
+        errorString.includes("ETIMEDOUT") ||
+        errorString.includes("ENETUNREACH") ||
+        errorString.includes("EHOSTUNREACH") ||
+        errorString.includes("ECONNREFUSED") ||
+        errorString.includes("ECONNRESET") ||
+        errorString.includes("EPIPE") ||
+        errorString.includes("ENOTCONN") ||
+        errorString.includes("EADDRINUSE") ||
+        errorString.includes("EADDRNOTAVAIL")
+      ) {
+        node.status({
+          fill: "red",
+          shape: "ring",
+          text: `Host unreachable: ${error}`,
+        });
+        node.error(`Host unreachable for ${node.Name}: ${error}`);
 
         if (connectionRetries < MAX_RETRIES) {
           connectionRetries++;

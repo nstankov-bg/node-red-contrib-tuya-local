@@ -168,26 +168,33 @@ module.exports = function (RED) {
       }
     });
 
-    device.on("connect", (error) => {
-      if (error) {
-        node.error(`Connection error for ${node.Name}: ${error}`);
-      } else {
-        node.log(`Connected to ${node.Name}`);
-      }
-    });
-
-    device.on("connected", () => {
-      this.status({
-        fill: "green",
-        shape: "dot",
-        text: this.Ip + " at " + getHumanTimeStamp(),
-      });
+    device.on("connected", (connected) => {
       try {
-        clearTimeout(timeout);
-      } catch (e) {
-        node.log(
-          "No timeout defined for " + this.Name + ", probably NodeRED starting"
-        );
+        if (connected) {
+          this.status({
+            fill: "green",
+            shape: "dot",
+            text: this.Ip + " at " + getHumanTimeStamp(),
+          });
+          try {
+            clearTimeout(timeout);
+          } catch (e) {
+            node.log(
+              "No timeout defined for " +
+                this.Name +
+                ", probably NodeRED starting"
+            );
+          }
+        } else {
+          this.status({
+            fill: "red",
+            shape: "ring",
+            text: "disconnected at " + getHumanTimeStamp(),
+          });
+          node.error(`Disconnected from ${node.Name}`);
+        }
+      } catch (err) {
+        node.error(`Error handling 'connected' event for ${node.Name}: ${err}`);
       }
     });
 

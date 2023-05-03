@@ -217,7 +217,7 @@ module.exports = function (RED) {
         }
       });
 
-      const MAX_RETRIES = 10;
+      const MAX_RETRIES = 20;
       let connectionRetries = 0;
 
       device.on("error", (error) => {

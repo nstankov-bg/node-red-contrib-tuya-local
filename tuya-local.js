@@ -168,6 +168,14 @@ module.exports = function (RED) {
       }
     });
 
+    device.on("connect", (error) => {
+      if (error) {
+        node.error(`Connection error for ${node.Name}: ${error}`);
+      } else {
+        node.log(`Connected to ${node.Name}`);
+      }
+    });
+
     device.on("connected", () => {
       this.status({
         fill: "green",

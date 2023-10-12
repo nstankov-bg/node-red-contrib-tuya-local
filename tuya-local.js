@@ -63,9 +63,6 @@ module.exports = function (RED) {
                     shape: "ring",
                     text: "failed: " + reason,
                   });
-                  node.error(
-                    `Failed to connect to device ${node.Name}: ${reason}`
-                  );
                 });
             })
             .catch((error) => {
@@ -74,7 +71,6 @@ module.exports = function (RED) {
                 shape: "ring",
                 text: "device not found",
               });
-              node.error(`Device not found for ${node.Name}: ${error}`);
               setTimeout(
                 () => connectToDevice(timeout, "Retrying connection"),
                 RETRY_DELAY
@@ -86,9 +82,6 @@ module.exports = function (RED) {
             shape: "ring",
             text: `Error: ${error.message}`,
           });
-          node.error(
-            `Error while trying to connect to device ${node.Name}: ${error}`
-          );
         }
       }
 
@@ -102,7 +95,6 @@ module.exports = function (RED) {
             shape: "ring",
             text: `Error: ${error.message}`,
           });
-          node.error(`Error while disconnecting device ${node.Name}: ${error}`);
         }
       }
 
@@ -158,9 +150,7 @@ module.exports = function (RED) {
             shape: "dot",
             text: `Error: ${error.message}`,
           });
-          node.error(
-            `Error while processing input for device ${node.Name}: ${error}`
-          );
+
           //Reconnect to device and wait for 3 seconds before retrying
           connectToDevice(3000, "Retry connection after error");
         }
@@ -185,9 +175,6 @@ module.exports = function (RED) {
             }, 5000);
           }
         } catch (err) {
-          node.error(
-            `Error handling 'disconnected' event for ${node.Name}: ${err}`
-          );
         }
       });
 
@@ -214,12 +201,9 @@ module.exports = function (RED) {
               shape: "ring",
               text: "disconnected at " + getHumanTimeStamp(),
             });
-            node.error(`Disconnected from ${node.Name}`);
           }
         } catch (err) {
-          node.error(
-            `Error handling 'connected' event for ${node.Name}: ${err}`
-          );
+
         }
       });
 
@@ -267,7 +251,6 @@ module.exports = function (RED) {
               shape: "ring",
               text: `Host unreachable: ${error}`,
             });
-            node.error(`Host unreachable for ${node.Name}: ${error}`);
 
             if (connectionRetries < MAX_RETRIES) {
               connectionRetries++;
@@ -280,14 +263,9 @@ module.exports = function (RED) {
                   `Retry connection attempt for ${node.Name} (${connectionRetries}/${MAX_RETRIES})`
                 );
               }, 5000 * connectionRetries); // Increasing delay before each retry
-            } else {
-              node.error(
-                `Max retries reached for ${node.Name}. Connection attempts stopped.`
-              );
             }
           }
         } catch (err) {
-          node.error(`Error handling 'error' event for ${node.Name}: ${err}`);
         }
       });
 
@@ -321,7 +299,6 @@ module.exports = function (RED) {
             }
           }
         } catch (err) {
-          node.error(`Error handling 'data' event for ${node.Name}: ${err}`);
         }
       });
 
@@ -332,12 +309,8 @@ module.exports = function (RED) {
               // You can handle successful execution here if necessary
             })
             .catch((err) => {
-              node.error(
-                `Error handling 'input' event for ${node.Name}: ${err}`
-              );
             });
         } catch (err) {
-          node.error(`Error handling 'input' event for ${node.Name}: ${err}`);
         }
       });
 
@@ -362,7 +335,6 @@ module.exports = function (RED) {
           }
           done();
         } catch (err) {
-          node.error(`Error handling 'close' event for ${node.Name}: ${err}`);
         }
       });
       //

@@ -105,10 +105,6 @@ module.exports = function (RED) {
       async function setDevice(req) {
         try {
           node.commandQueue.push(req);
-          node.warn(
-            `Current command queue: ${JSON.stringify(node.commandQueue)}`
-          );
-
           while (node.commandQueue.length > 0) {
             const currentReq = node.commandQueue.shift();
 
@@ -120,9 +116,6 @@ module.exports = function (RED) {
                 "Connection requested by input for device: " + node.Name
               );
             } else if (currentReq == "disconnect") {
-              node.log(
-                "Disconnection requested by input for device: " + node.Name
-              );
               device.disconnect();
             } else if (currentReq == "toggle") {
               await device.toggle();
@@ -189,11 +182,6 @@ module.exports = function (RED) {
             try {
               clearTimeout(timeout);
             } catch (e) {
-              node.log(
-                "No timeout defined for " +
-                  this.Name +
-                  ", probably NodeRED starting"
-              );
             }
           } else {
             this.status({
@@ -217,21 +205,11 @@ module.exports = function (RED) {
             shape: "ring",
             text: "error: " + error,
           });
-          node.warn(error + " device: " + this.Name);
 
           if (error.toString().includes("Error from socket")) {
             try {
-              node.log(
-                "error: Trying to clear a possible timeout timer for device " +
-                  this.Name
-              );
               clearTimeout(timeout);
             } catch (e) {
-              node.log(
-                "error: No timeout defined, device " +
-                  this.Name +
-                  " is probably not powered"
-              );
             }
           }
 
@@ -254,9 +232,6 @@ module.exports = function (RED) {
 
             if (connectionRetries < MAX_RETRIES) {
               connectionRetries++;
-              node.warn(
-                `Retrying connection for ${node.Name} (${connectionRetries}/${MAX_RETRIES})`
-              );
               setTimeout(() => {
                 connectToDevice(
                   5,
@@ -317,18 +292,11 @@ module.exports = function (RED) {
       this.on("close", function (removed, done) {
         try {
           if (removed) {
-            // This node has been deleted disconnect device and not set a timeout for reconnection
-            node.log(
-              "Node removal, gracefully disconnect device: " + this.Name
-            );
             device.isConnected()
               ? disconnectDevice(true)
               : node.log("Device " + this.Name + "not connected on removal");
           } else {
             // this node is being restarted, disconnect the device gracefully or connection will fail. Do not set a timeout
-            node.log(
-              "Node de-deploy, gracefully disconnect device: " + this.Name
-            );
             device.isConnected()
               ? disconnectDevice(true)
               : node.log("Device " + this.Name + "not connected on re-deploy");

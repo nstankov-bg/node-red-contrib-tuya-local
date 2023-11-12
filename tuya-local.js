@@ -27,6 +27,7 @@ module.exports = function (RED) {
       this.version = config.protocolVer;
       this.renameSchema = config.renameSchema;
       this.filterCB = config.filterCB;
+      this.timerOFF = config.timerOFF;
       const dev_info = { name: this.Name, ip: this.Ip, id: this.Id };
       const device = new TuyaDev({
         id: this.Id,
@@ -106,27 +107,35 @@ module.exports = function (RED) {
           node.commandQueue.push(req);
           while (node.commandQueue.length > 0) {
             const currentReq = node.commandQueue.shift();
-      
+
             if (currentReq == "request") {
               await device.get({ schema: true });
             } else if (currentReq == "connect") {
-              connectToDevice(5, "Connection requested by input for device: " + node.Name);
+              connectToDevice(
+                5,
+                "Connection requested by input for device: " + node.Name
+              );
             } else if (currentReq == "disconnect") {
               device.disconnect();
             } else if (currentReq == "toggle") {
-              await executeCommandWithVerification(() => device.toggle());
+              await device.toggle();
             } else if (typeof currentReq == "boolean") {
-              await executeCommandWithVerification(() => device.set({ set: currentReq }));
+              await device.set({ set: currentReq });
+              node.status({
+                fill: "green",
+                shape: "dot",
+                text: "set success at:" + getHumanTimeStamp(),
+              });
             } else if ("dps" in currentReq) {
-              await executeCommandWithVerification(() => device.set(currentReq));
+              await device.set(currentReq);
             } else if ("multiple" in currentReq) {
-              await executeCommandWithVerification(() => device.set({
+              await device.set({
                 multiple: true,
                 data: currentReq.data,
-              }));
+              });
             }
-      
-            await wait(2000); // Add a 2-second timeout before executing the next command
+            // Add a 2-second timeout before executing the next command
+            await wait(2000);
           }
         } catch (error) {
           node.status({
@@ -134,36 +143,11 @@ module.exports = function (RED) {
             shape: "dot",
             text: `Error: ${error.message}`,
           });
-      
-          // Reconnect to device and wait for 3 seconds before retrying
+
+          //Reconnect to device and wait for 3 seconds before retrying
           connectToDevice(3000, "Retry connection after error");
         }
       }
-      
-      async function executeCommandWithVerification(commandFunc) {
-        const MAX_RETRIES = 3;
-        let retryCount = 0;
-        let success = false;
-      
-        while (retryCount < MAX_RETRIES && !success) {
-          await commandFunc();
-          await wait(1000); // Wait for a second before verifying the status
-      
-          // Assuming we want to compare the 'set' status
-          const status = await device.get();
-          success = status === desiredStatus; // `desiredStatus` should be defined based on your command
-      
-          if (!success) {
-            retryCount++;
-            node.log(`Retrying command... Attempt ${retryCount}/${MAX_RETRIES}`);
-          }
-        }
-      
-        if (!success) {
-          throw new Error("Failed to set device status after multiple attempts.");
-        }
-      }
-      
 
       const RETRY_DELAY = 5000; // 5 seconds
       connectToDevice(5, "Deploy connection request for device " + this.Name);
@@ -268,6 +252,18 @@ module.exports = function (RED) {
               data.dps = checkValidJSON(this.renameSchema)
                 ? keyRename(data.dps, JSON.parse(this.renameSchema))
                 : data.dps;
+            }
+
+            // Check if timerOFF is not 0 and turn off lightbulbs after the specified time
+            if (this.timerOFF !== 0) {
+              setTimeout(() => {
+                node.status({
+                  fill: "green",
+                  shape: "dot",
+                  text: "Timer scheduled for " + this.timerOFF + " seconds",
+                });
+                setDevice({ dps: 20, set: false }); // Assuming dps 20 is the lightbulb control and 'set' is the property to turn it on/off
+              }, this.timerOFF * 1000); // Convert timerOFF to milliseconds
             }
 
             msg = { data: dev_info, commandByte: commandByte, payload: data };

@@ -254,17 +254,17 @@ module.exports = function (RED) {
                 : data.dps;
             }
 
-            // Check if timerOFF is not 0 and turn off lightbulbs after the specified time
-            if (this.timerOFF !== 0) {
-              setTimeout(() => {
-                node.status({
-                  fill: "green",
-                  shape: "dot",
-                  text: "Timer scheduled for " + this.timerOFF + " seconds",
-                });
-                setDevice({ dps: 20, set: false }); // Assuming dps 20 is the lightbulb control and 'set' is the property to turn it on/off
-              }, this.timerOFF * 1000); // Convert timerOFF to milliseconds
-            }
+            // // Check if timerOFF is not 0 and turn off lightbulbs after the specified time
+            // if (this.timerOFF !== 0) {
+            //   setTimeout(() => {
+            //     node.status({
+            //       fill: "green",
+            //       shape: "dot",
+            //       text: "Timer scheduled for " + this.timerOFF + " seconds",
+            //     });
+            //     setDevice({ dps: 20, set: false }); // Assuming dps 20 is the lightbulb control and 'set' is the property to turn it on/off
+            //   }, this.timerOFF * 1000); // Convert timerOFF to milliseconds
+            // }
 
             msg = { data: dev_info, commandByte: commandByte, payload: data };
             if (this.filterCB !== "") {
